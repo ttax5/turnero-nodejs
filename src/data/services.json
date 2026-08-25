@@ -1,0 +1,9 @@
+{
+    "id": "1740356000000",
+    "name": "Corte de Pelo",
+    "description": "Corte masculino tradicional",
+    "duration": 30,
+    "price": 1500,
+    "category": "Peluquería",
+    "available": true
+}
