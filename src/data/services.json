@@ -1,9 +1,20 @@
-{
-    "id": "1740356000000",
+[
+  {
+    "id": "1",
     "name": "Corte de Pelo",
     "description": "Corte masculino tradicional",
     "duration": 30,
     "price": 1500,
     "category": "Peluquería",
     "available": true
-}
+  },
+  {
+    "id": "2",
+    "name": "Consulta Médica",
+    "description": "Evaluación médica general y diagnóstico",
+    "duration": 45,
+    "price": 5000,
+    "category": "Salud",
+    "available": true
+  }
+]
