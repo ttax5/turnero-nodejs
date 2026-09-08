@@ -7,7 +7,17 @@ const serviceManager = new ServiceManager();
 // GET /api/services - Devuelve todos los servicios
 router.get('/', async (req, res) => {
     try {
-        const services = await serviceManager.getServices();
+        let services = await serviceManager.getServices();
+        
+        const { category, available } = req.query;
+        if (category) {
+            services = services.filter(s => s.category.toLowerCase() === category.toLowerCase());
+        }
+        if (available !== undefined) {
+            const isAvailable = available === 'true';
+            services = services.filter(s => s.available === isAvailable);
+        }
+
         res.status(200).json({
             status: 'success',
             payload: services
