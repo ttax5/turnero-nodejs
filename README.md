@@ -153,9 +153,3 @@ El servidor quedará disponible en `http://localhost:8080`.
   }
 }
 ```
-
----
-
-## 🎓 Guía de Estudio HTML
-
-Se incluye en la raíz del proyecto el archivo **`guia_clase_coderhouse.html`**, un documento interactivo y visualmente estructurado con explicaciones paso a paso de toda la teoría, arquitectura, código y flujo de datos de la clase.
