@@ -1,20 +1,10 @@
-import { ServiceManager } from '../managers/ServiceManager.js';
-
-const serviceManager = new ServiceManager();
+import { servicesService } from '../services/services.service.js';
 
 export const getServices = async (req, res) => {
     try {
-        let services = await serviceManager.getServices();
-        
         const { category, available } = req.query;
-        if (category) {
-            services = services.filter(s => s.category.toLowerCase() === category.toLowerCase());
-        }
-        if (available !== undefined) {
-            const isAvailable = available === 'true';
-            services = services.filter(s => s.available === isAvailable);
-        }
-
+        const services = await servicesService.getServices({ category, available });
+        
         res.status(200).json({
             status: 'success',
             payload: services
@@ -31,7 +21,7 @@ export const getServices = async (req, res) => {
 export const getServiceById = async (req, res) => {
     const { sid } = req.params;
     try {
-        const service = await serviceManager.getServiceById(sid);
+        const service = await servicesService.getServiceById(sid);
         res.status(200).json({
             status: 'success',
             payload: service
@@ -45,31 +35,8 @@ export const getServiceById = async (req, res) => {
 };
 
 export const createService = async (req, res) => {
-    const { name, description, duration, price, category, available } = req.body;
-
-    if (
-        !name ||
-        !description ||
-        duration === undefined ||
-        price === undefined ||
-        !category ||
-        available === undefined
-    ) {
-        return res.status(400).json({
-            status: 'error',
-            message: 'Todos los campos son obligatorios: name, description, duration, price, category, available'
-        });
-    }
-
     try {
-        const newService = await serviceManager.addService({
-            name,
-            description,
-            duration,
-            price,
-            category,
-            available
-        });
+        const newService = await servicesService.createService(req.body);
 
         res.status(201).json({
             status: 'success',
@@ -96,7 +63,7 @@ export const updateService = async (req, res) => {
     }
 
     try {
-        const updatedService = await serviceManager.updateService(sid, updateData);
+        const updatedService = await servicesService.updateService(sid, updateData);
         res.status(200).json({
             status: 'success',
             message: 'Servicio actualizado exitosamente',
@@ -113,7 +80,7 @@ export const updateService = async (req, res) => {
 export const deleteService = async (req, res) => {
     const { sid } = req.params;
     try {
-        const deletedService = await serviceManager.deleteService(sid);
+        const deletedService = await servicesService.deleteService(sid);
         res.status(200).json({
             status: 'success',
             message: `Servicio con id ${sid} eliminado exitosamente`,

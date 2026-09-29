@@ -4,7 +4,8 @@ dotenv.config();
 
 const config = {
     port: Number(process.env.PORT) || 8080,
-    nodeEnv: process.env.NODE_ENV || 'development'
+    nodeEnv: process.env.NODE_ENV || 'development',
+    mongoURI: process.env.MONGODB_URI
 };
 
 // Validación requerida por la consigna

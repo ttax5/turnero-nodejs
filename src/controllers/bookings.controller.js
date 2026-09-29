@@ -1,10 +1,8 @@
-import { BookingManager } from '../managers/BookingManager.js';
-
-const bookingManager = new BookingManager();
+import { bookingsService } from '../services/bookings.service.js';
 
 export const getBookings = async (req, res) => {
     try {
-        const bookings = await bookingManager.getBookings();
+        const bookings = await bookingsService.getBookings();
         res.status(200).json({
             status: 'success',
             payload: bookings
@@ -21,7 +19,7 @@ export const getBookings = async (req, res) => {
 export const getBookingById = async (req, res) => {
     const { bid } = req.params;
     try {
-        const booking = await bookingManager.getBookingById(bid);
+        const booking = await bookingsService.getBookingById(bid);
         res.status(200).json({
             status: 'success',
             payload: booking
@@ -35,25 +33,8 @@ export const getBookingById = async (req, res) => {
 };
 
 export const createBooking = async (req, res) => {
-    const { clientName, clientEmail, date, time, status, services } = req.body;
-
-    // Validación básica de campos obligatorios
-    if (!clientName || !clientEmail || !date || !time) {
-        return res.status(400).json({
-            status: 'error',
-            message: 'Los campos clientName, clientEmail, date y time son obligatorios'
-        });
-    }
-
     try {
-        const newBooking = await bookingManager.createBooking({
-            clientName,
-            clientEmail,
-            date,
-            time,
-            status,
-            services: Array.isArray(services) ? services : []
-        });
+        const newBooking = await bookingsService.createBooking(req.body);
 
         res.status(201).json({
             status: 'success',
@@ -73,7 +54,7 @@ export const addServiceToBooking = async (req, res) => {
     const quantity = req.body?.quantity || 1;
 
     try {
-        const updatedBooking = await bookingManager.addServiceToBooking(bid, sid, quantity);
+        const updatedBooking = await bookingsService.addServiceToBooking(bid, sid, quantity);
         res.status(200).json({
             status: 'success',
             message: `Servicio ${sid} agregado a la reserva ${bid} exitosamente`,
