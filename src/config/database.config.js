@@ -1,17 +1,15 @@
-import mongoose from "mongoose";
-import config from "./env.config.js";
+import mongoose from 'mongoose';
+import config from './env.config.js';
 
+// Conexión centralizada a MongoDB Atlas. Si falla, el proceso termina:
+// MongoDB es la persistencia principal y no tiene sentido levantar la API sin ella.
 export const connectDB = async () => {
-    if (!config.mongoURI) {
-        console.log("ℹ️ MONGODB_URI no definida. Se utilizará exclusivamente persistencia en archivos JSON.");
-        return;
-    }
-
     try {
-        await mongoose.connect(config.mongoURI);
-        console.log("✅ Conexión a MongoDB exitosa");
+        await mongoose.connect(config.mongoUri);
+        console.log(`✅ Conexión a MongoDB exitosa (db: ${mongoose.connection.name})`);
     } catch (error) {
-        console.warn("⚠️ No se pudo conectar a MongoDB. Continuando con persistencia JSON:", error.message);
+        console.error('❌ Error al conectar con MongoDB:', error.message);
+        process.exit(1);
     }
 };
 

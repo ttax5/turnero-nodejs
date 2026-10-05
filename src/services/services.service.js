@@ -6,18 +6,15 @@ class ServicesService {
     }
 
     async getServices(filters = {}) {
-        let services = await this.repository.getAll();
-
-        if (filters.category) {
-            services = services.filter(s => s.category && s.category.toLowerCase() === filters.category.toLowerCase());
+        // Normaliza los filtros del query string; el filtrado lo resuelve la base de datos
+        const normalized = {};
+        if (filters.category && String(filters.category).trim() !== '') {
+            normalized.category = String(filters.category).trim();
         }
-
         if (filters.available !== undefined) {
-            const isAvailable = String(filters.available) === 'true';
-            services = services.filter(s => s.available === isAvailable);
+            normalized.available = String(filters.available) === 'true';
         }
-
-        return services;
+        return await this.repository.getAll(normalized);
     }
 
     async getServiceById(id) {

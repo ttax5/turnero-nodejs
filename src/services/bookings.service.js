@@ -37,10 +37,32 @@ class BookingsService {
             date: String(date).trim(),
             time: String(time).trim(),
             status: status ? String(status).trim() : 'confirmed',
-            services: Array.isArray(services) ? services : []
+            services: await this._normalizeServices(services)
         };
 
         return await this.bookingRepository.create(formattedBooking);
+    }
+
+    // Valida que cada servicio referenciado exista y agrupa duplicados sumando quantity
+    // (misma regla de negocio que addServiceToBooking)
+    async _normalizeServices(services) {
+        if (services === undefined || services === null) return [];
+        if (!Array.isArray(services)) {
+            throw new Error('El campo services debe ser un array de { service, quantity }');
+        }
+
+        const grouped = new Map();
+        for (const item of services) {
+            const serviceId = String(item?.service ?? '');
+            const service = await this.serviceRepository.getById(serviceId);
+            if (!service) {
+                throw new Error(`No se encontró el servicio con el id: ${serviceId}`);
+            }
+            const qty = Math.max(1, Number(item.quantity) || 1);
+            grouped.set(serviceId, (grouped.get(serviceId) || 0) + qty);
+        }
+
+        return [...grouped].map(([service, quantity]) => ({ service, quantity }));
     }
 
     async addServiceToBooking(bookingId, serviceId, quantity = 1) {

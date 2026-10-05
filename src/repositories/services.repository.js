@@ -5,8 +5,8 @@ class ServicesRepository {
         this.dao = dao;
     }
 
-    async getAll() {
-        return await this.dao.getAll();
+    async getAll(filters = {}) {
+        return await this.dao.getAll(filters);
     }
 
     async getById(id) {

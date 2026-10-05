@@ -5,12 +5,11 @@ dotenv.config();
 const config = {
     port: Number(process.env.PORT) || 8080,
     nodeEnv: process.env.NODE_ENV || 'development',
-    mongoURI: process.env.MONGODB_URI
+    mongoUri: process.env.MONGO_URI
 };
 
-// Validación requerida por la consigna
-if (!config.port || !config.nodeEnv) {
-    console.error('❌ FATAL ERROR: PORT o NODE_ENV no están definidas en las variables de entorno.');
+if (!config.mongoUri) {
+    console.error('❌ FATAL ERROR: falta configurar MONGO_URI en las variables de entorno (.env).');
     process.exit(1);
 }
 

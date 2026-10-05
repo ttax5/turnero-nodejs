@@ -70,7 +70,8 @@ export const updateService = async (req, res) => {
             payload: updatedService
         });
     } catch (error) {
-        res.status(404).json({
+        // Datos inválidos según el schema → 400; servicio inexistente → 404
+        res.status(error.name === 'ValidationError' ? 400 : 404).json({
             status: 'error',
             message: error.message
         });

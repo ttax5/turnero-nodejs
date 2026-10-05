@@ -1,48 +1,37 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { engine } from 'express-handlebars';
 import servicesRouter from './routes/services.router.js';
 import bookingsRouter from './routes/bookings.router.js';
-import exphbs from 'express-handlebars';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
-import { engine } from 'express-handlebars';
-
 
 // Middlewares para procesar cuerpos JSON y formularios URL encoded
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-//confirguracion de handlebars  
-app.engine('handlebars', engine());
+// Configuración de Handlebars (rutas absolutas para no depender del directorio de ejecución)
+app.engine('handlebars', engine({
+    layoutsDir: path.join(__dirname, 'views', 'layouts'),
+    defaultLayout: 'main'
+}));
 app.set('view engine', 'handlebars');
-app.set('views', './views');
+app.set('views', path.join(__dirname, 'views'));
 
-
-//RUTAS TEST HBS
+// Vista de bienvenida
 app.get('/', (req, res) => {
     res.render('home', {
         title: 'Home',
-        message: 'Bienvenido a la API del Sistema de Turnos y Reservas',
-        layout: 'main' 
+        message: 'Bienvenido a la API del Sistema de Turnos y Reservas'
     });
 });
 
 // Rutas principales de la API
 app.use('/api/services', servicesRouter);
 app.use('/api/bookings', bookingsRouter);
-
-// Ruta de bienvenida / salud
-app.get('/', (req, res) => {
-    res.json({
-        message: 'Bienvenido a la API del Sistema de Turnos y Reservas',
-        endpoints: {
-            services: '/api/services',
-            bookings: '/api/bookings'
-        },
-        version: '1.0.0'
-    });
-});
 
 // Manejador de rutas no encontradas (404)
 app.use((req, res) => {

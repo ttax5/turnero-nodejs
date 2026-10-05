@@ -216,9 +216,6 @@ importers:
       express-handlebars:
         specifier: ^9.0.1
         version: 9.0.1
-      mongodb:
-        specifier: ^7.6.0
-        version: 7.6.0
       mongoose:
         specifier: ^9.10.1
         version: 9.10.1
