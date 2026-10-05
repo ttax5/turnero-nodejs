@@ -1,4 +1,5 @@
 import { bookingsService } from '../services/bookings.service.js';
+import { notifyBookingsUpdated } from '../sockets/socket.js';
 
 export const getBookings = async (req, res) => {
     try {
@@ -41,6 +42,8 @@ export const createBooking = async (req, res) => {
             message: 'Reserva creada exitosamente',
             payload: newBooking
         });
+        // Avisar en tiempo real a las vistas conectadas
+        notifyBookingsUpdated();
     } catch (error) {
         res.status(400).json({
             status: 'error',
@@ -60,6 +63,8 @@ export const addServiceToBooking = async (req, res) => {
             message: `Servicio ${sid} agregado a la reserva ${bid} exitosamente`,
             payload: updatedBooking
         });
+        // Avisar en tiempo real a las vistas conectadas
+        notifyBookingsUpdated();
     } catch (error) {
         res.status(404).json({
             status: 'error',

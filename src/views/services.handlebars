@@ -1,0 +1,29 @@
+<div class="page-header">
+    <h1>Servicios</h1>
+    <span class="live" id="live-status">Conectando…</span>
+</div>
+<p class="hint">El listado se actualiza solo cuando se crea, edita o elimina un servicio desde la API.</p>
+
+<div class="grid" id="services-list">
+    {{#each services}}
+        <article class="card">
+            <header class="card-header">
+                <h2>{{name}}</h2>
+                {{#if available}}
+                    <span class="badge badge-ok">Disponible</span>
+                {{else}}
+                    <span class="badge badge-off">No disponible</span>
+                {{/if}}
+            </header>
+            <p>{{description}}</p>
+            <dl>
+                <dt>Duración</dt><dd>{{duration}} min</dd>
+                <dt>Precio</dt><dd>${{price}}</dd>
+                <dt>Categoría</dt><dd>{{category}}</dd>
+            </dl>
+            <code class="id">{{_id}}</code>
+        </article>
+    {{else}}
+        <p class="empty">No hay servicios cargados.</p>
+    {{/each}}
+</div>

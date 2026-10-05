@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { engine } from 'express-handlebars';
 import servicesRouter from './routes/services.router.js';
 import bookingsRouter from './routes/bookings.router.js';
+import viewsRouter from './routes/views.router.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,6 +14,9 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Archivos estáticos (CSS y JS del cliente, incluido socket.js)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Configuración de Handlebars (rutas absolutas para no depender del directorio de ejecución)
 app.engine('handlebars', engine({
     layoutsDir: path.join(__dirname, 'views', 'layouts'),
@@ -21,13 +25,9 @@ app.engine('handlebars', engine({
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
-// Vista de bienvenida
-app.get('/', (req, res) => {
-    res.render('home', {
-        title: 'Home',
-        message: 'Bienvenido a la API del Sistema de Turnos y Reservas'
-    });
-});
+// Vistas renderizadas con Handlebars
+app.get('/', (req, res) => res.redirect('/views'));
+app.use('/views', viewsRouter);
 
 // Rutas principales de la API
 app.use('/api/services', servicesRouter);

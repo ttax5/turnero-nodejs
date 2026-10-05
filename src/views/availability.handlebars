@@ -1,0 +1,60 @@
+<div class="page-header">
+    <h1>Disponibilidad</h1>
+    <span class="live" id="live-status">Conectando…</span>
+</div>
+<p class="hint">Se actualiza solo cuando cambia la disponibilidad de un servicio o se registra / modifica una reserva.</p>
+
+<section class="columns">
+    <div>
+        <h2>Disponibles (<span id="available-count">{{availableServices.length}}</span>)</h2>
+        <ul class="list" id="available-list">
+            {{#each availableServices}}
+                <li><strong>{{name}}</strong> <span class="muted">· {{category}} · {{duration}} min · ${{price}}</span></li>
+            {{else}}
+                <li class="empty">Ningún servicio disponible.</li>
+            {{/each}}
+        </ul>
+    </div>
+    <div>
+        <h2>No disponibles (<span id="unavailable-count">{{unavailableServices.length}}</span>)</h2>
+        <ul class="list" id="unavailable-list">
+            {{#each unavailableServices}}
+                <li><strong>{{name}}</strong> <span class="muted">· {{category}}</span></li>
+            {{else}}
+                <li class="empty">Todos los servicios están disponibles.</li>
+            {{/each}}
+        </ul>
+    </div>
+</section>
+
+<section>
+    <h2>Reservas (<span id="bookings-count">{{bookings.length}}</span>)</h2>
+    <div class="table-wrap">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Email</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Estado</th>
+                <th>Servicios</th>
+            </tr>
+        </thead>
+        <tbody id="bookings-list">
+            {{#each bookings}}
+                <tr>
+                    <td>{{clientName}}</td>
+                    <td>{{clientEmail}}</td>
+                    <td>{{date}}</td>
+                    <td>{{time}}</td>
+                    <td><span class="badge status-{{status}}">{{status}}</span></td>
+                    <td>{{totalServices}}</td>
+                </tr>
+            {{else}}
+                <tr><td colspan="6" class="empty">No hay reservas registradas.</td></tr>
+            {{/each}}
+        </tbody>
+    </table>
+    </div>
+</section>

@@ -1,4 +1,5 @@
 import { servicesService } from '../services/services.service.js';
+import { notifyServicesUpdated } from '../sockets/socket.js';
 
 export const getServices = async (req, res) => {
     try {
@@ -43,6 +44,8 @@ export const createService = async (req, res) => {
             message: 'Servicio creado exitosamente',
             payload: newService
         });
+        // Avisar en tiempo real a las vistas conectadas
+        notifyServicesUpdated();
     } catch (error) {
         res.status(400).json({
             status: 'error',
@@ -69,6 +72,8 @@ export const updateService = async (req, res) => {
             message: 'Servicio actualizado exitosamente',
             payload: updatedService
         });
+        // Avisar en tiempo real a las vistas conectadas
+        notifyServicesUpdated();
     } catch (error) {
         // Datos inválidos según el schema → 400; servicio inexistente → 404
         res.status(error.name === 'ValidationError' ? 400 : 404).json({
@@ -87,6 +92,8 @@ export const deleteService = async (req, res) => {
             message: `Servicio con id ${sid} eliminado exitosamente`,
             payload: deletedService
         });
+        // Avisar en tiempo real a las vistas conectadas
+        notifyServicesUpdated();
     } catch (error) {
         res.status(404).json({
             status: 'error',
