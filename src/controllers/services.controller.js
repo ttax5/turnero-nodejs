@@ -1,14 +1,31 @@
 import { servicesService } from '../services/services.service.js';
 import { notifyServicesUpdated } from '../sockets/socket.js';
 
+// Arma el link a otra página conservando los demás query params
+const buildPageLink = (req, page) => {
+    const params = new URLSearchParams(req.query);
+    params.set('page', page);
+    return `${req.baseUrl}?${params.toString()}`;
+};
+
 export const getServices = async (req, res) => {
     try {
-        const { category, available } = req.query;
-        const services = await servicesService.getServices({ category, available });
-        
+        // Query ya validado y convertido por el middleware validateQuery
+        const result = await servicesService.getPaginatedServices(req.validatedQuery);
+
         res.status(200).json({
             status: 'success',
-            payload: services
+            payload: result.docs,
+            total: result.total,
+            page: result.page,
+            limit: result.limit,
+            totalPages: result.totalPages,
+            hasPrevPage: result.hasPrevPage,
+            hasNextPage: result.hasNextPage,
+            prevPage: result.prevPage,
+            nextPage: result.nextPage,
+            prevLink: result.hasPrevPage ? buildPageLink(req, result.prevPage) : null,
+            nextLink: result.hasNextPage ? buildPageLink(req, result.nextPage) : null
         });
     } catch (error) {
         res.status(500).json({
@@ -56,17 +73,8 @@ export const createService = async (req, res) => {
 
 export const updateService = async (req, res) => {
     const { sid } = req.params;
-    const updateData = req.body;
-
-    if (!updateData || Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-            status: 'error',
-            message: 'Debe enviar al menos un campo para actualizar'
-        });
-    }
-
     try {
-        const updatedService = await servicesService.updateService(sid, updateData);
+        const updatedService = await servicesService.updateService(sid, req.body);
         res.status(200).json({
             status: 'success',
             message: 'Servicio actualizado exitosamente',

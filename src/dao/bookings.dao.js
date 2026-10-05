@@ -11,6 +11,13 @@ class BookingsDao {
         return await BookingModel.findById(id).lean();
     }
 
+    // Igual que getById pero reemplaza cada referencia services.service por el
+    // documento completo de la colección services (populate). Sólo para consultar.
+    async getByIdWithServices(id) {
+        if (!mongoose.isValidObjectId(id)) return null;
+        return await BookingModel.findById(id).populate('services.service').lean();
+    }
+
     async create(bookingData) {
         const created = await BookingModel.create(bookingData);
         return created.toObject();

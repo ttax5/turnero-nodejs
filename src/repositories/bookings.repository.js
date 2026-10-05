@@ -13,6 +13,10 @@ class BookingsRepository {
         return await this.dao.getById(id);
     }
 
+    async getByIdWithServices(id) {
+        return await this.dao.getByIdWithServices(id);
+    }
+
     async create(bookingData) {
         return await this.dao.create(bookingData);
     }

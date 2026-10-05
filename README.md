@@ -1,8 +1,8 @@
 # Sistema Backend de Turnos y Reservas
 
-API REST con **Node.js + Express + MongoDB Atlas (Mongoose)**, organizada en arquitectura en capas, con vistas renderizadas con **Handlebars** y actualizaciones en tiempo real con **Socket.io**.
+API REST con **Node.js + Express + MongoDB Atlas (Mongoose)**, organizada en arquitectura en capas, con validación de datos con **Zod**, consultas con filtros / paginación / ordenamiento, relaciones con `populate`, vistas renderizadas con **Handlebars** y actualizaciones en tiempo real con **Socket.io**.
 
-> Pre-entrega 7: se agregaron vistas del lado del servidor y comunicación en tiempo real. La API REST no cambió.
+> Pre-entrega 8: `GET /api/services` con filtros, paginación y ordenamiento; validación con Zod en la creación/actualización de servicios, la creación de reservas y el agregado de servicios a una reserva; y `GET /api/bookings/:bid` con `populate` de los servicios.
 
 ## Requisitos
 
@@ -39,7 +39,8 @@ router → controller → service → repository → DAO → MongoDB (Mongoose m
 
 | Capa       | Responsabilidad |
 |------------|-----------------|
-| Router     | Define endpoints y los conecta al controller |
+| Router     | Define endpoints y los conecta al controller (y a los middlewares de validación) |
+| Middleware de validación | Valida `body` / `params` / `query` con Zod y corta con 400 antes del controller |
 | Controller | Lee `req`, llama al service y responde con `res` |
 | Service    | Reglas de negocio y validaciones; no conoce `req`/`res` ni Mongoose |
 | Repository | Interfaz de acceso a datos sin reglas de negocio |
@@ -53,6 +54,12 @@ src/
 │   ├── env.config.js          # Variables de entorno (valida MONGO_URI)
 │   └── database.config.js     # Conexión centralizada a MongoDB
 ├── controllers/
+├── middlewares/
+│   └── validate.middleware.js # validateBody / validateParams / validateQuery (Zod)
+├── validations/               # Esquemas de Zod
+│   ├── common.validation.js
+│   ├── service.validation.js
+│   └── booking.validation.js
 ├── services/
 ├── repositories/
 ├── dao/
@@ -133,28 +140,141 @@ Socket.io comparte el servidor HTTP con Express (`server.js`). Cuando una acció
 
 ## Endpoints
 
-Los ids ahora son `ObjectId` de MongoDB (campo `_id`). Un id con formato inválido responde 404, igual que uno inexistente.
+Los ids son `ObjectId` de MongoDB (campo `_id`). En `GET`/`PUT`/`DELETE` de servicios y en `GET` de reservas, un id con formato inválido responde 404, igual que uno inexistente. En `POST /api/bookings/:bid/services/:sid` los ids se validan con Zod y un formato inválido responde 400.
 
 ### Servicios `/api/services`
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET    | `/api/services` | Lista servicios. Filtros opcionales: `?category=salud&available=true` |
+| GET    | `/api/services` | Lista servicios con filtros, paginación y ordenamiento (ver abajo) |
 | GET    | `/api/services/:sid` | Servicio por id |
-| POST   | `/api/services` | Crea un servicio |
-| PUT    | `/api/services/:sid` | Actualiza campos de un servicio |
+| POST   | `/api/services` | Crea un servicio (validado con Zod) |
+| PUT    | `/api/services/:sid` | Actualiza campos de un servicio (validado con Zod; el id no se puede modificar) |
 | DELETE | `/api/services/:sid` | Elimina un servicio |
 
 ### Reservas `/api/bookings`
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET    | `/api/bookings` | Lista todas las reservas |
-| POST   | `/api/bookings` | Crea una reserva |
-| GET    | `/api/bookings/:bid` | Reserva por id |
-| POST   | `/api/bookings/:bid/services/:sid` | Agrega un servicio (body opcional `{ "quantity": n }`) |
+| GET    | `/api/bookings` | Lista todas las reservas (con las referencias a servicios, sin populate) |
+| POST   | `/api/bookings` | Crea una reserva (validado con Zod) |
+| GET    | `/api/bookings/:bid` | Reserva por id **con los datos completos de cada servicio** (`populate`) |
+| POST   | `/api/bookings/:bid/services/:sid` | Agrega un servicio (body opcional `{ "quantity": n }`, validado con Zod) |
 
-### Ejemplo
+## Filtros, paginación y ordenamiento
+
+`GET /api/services` acepta estos query params (todos opcionales):
+
+| Param | Valores | Por defecto | Descripción |
+|-------|---------|-------------|-------------|
+| `category` | texto | — | Filtra por categoría (sin distinguir mayúsculas) |
+| `available` | `true` \| `false` | — | Filtra por disponibilidad |
+| `page` | entero ≥ 1 | `1` | Página solicitada |
+| `limit` | entero entre 1 y 100 | `10` | Resultados por página |
+| `sortBy` | `name` \| `price` \| `duration` \| `category` \| `createdAt` | — (orden de creación) | Campo por el que se ordena |
+| `order` | `asc` \| `desc` | `asc` | Sentido del orden |
+
+Un valor inválido (por ejemplo `page=0`, `limit=500` o `sortBy=foo`) responde **400** con el detalle del error.
+
+Ejemplos:
+
+```bash
+GET /api/services?category=salud
+GET /api/services?available=true
+GET /api/services?page=2&limit=5
+GET /api/services?sortBy=price&order=desc
+GET /api/services?category=estetica&available=true&page=1&limit=10&sortBy=price&order=asc
+```
+
+Respuesta (`payload` sigue siendo el array de servicios, más los metadatos de paginación):
+
+```json
+{
+  "status": "success",
+  "payload": [ { "_id": "...", "name": "Consulta Médica", "price": 5000, "...": "..." } ],
+  "total": 12,
+  "page": 2,
+  "limit": 5,
+  "totalPages": 3,
+  "hasPrevPage": true,
+  "hasNextPage": true,
+  "prevPage": 1,
+  "nextPage": 3,
+  "prevLink": "/api/services?page=1&limit=5",
+  "nextLink": "/api/services?page=3&limit=5"
+}
+```
+
+`prevLink` y `nextLink` conservan los demás filtros de la consulta.
+
+## Validaciones (Zod)
+
+Los esquemas están en `src/validations/` y se aplican como middlewares en los routers (`validateBody`, `validateParams`, `validateQuery`), así que los datos inválidos se rechazan **antes** de llegar al controller y a MongoDB. Los modelos de Mongoose mantienen sus propias validaciones como segunda barrera.
+
+| Endpoint | Qué se valida |
+|----------|---------------|
+| `POST /api/services` | `name`, `description`, `category`: texto no vacío · `duration`: entero > 0 · `price`: número ≥ 0 · `available`: booleano. Todos obligatorios |
+| `PUT /api/services/:sid` | Los mismos campos, pero opcionales; al menos uno. `_id` y campos desconocidos se descartan |
+| `POST /api/bookings` | `clientName`: texto no vacío · `clientEmail`: email válido · `date`: fecha real `YYYY-MM-DD` · `time`: `HH:mm` (24 hs) · `status` (opcional): `pending` \| `confirmed` \| `cancelled` · `services` (opcional): array de `{ service: ObjectId, quantity?: entero ≥ 1 }` |
+| `POST /api/bookings/:bid/services/:sid` | `bid` y `sid`: ObjectId válidos · `quantity` (opcional): entero ≥ 1 |
+| `GET /api/services` | Query params de la sección anterior |
+
+Los números y booleanos también se aceptan como string (`"60"`, `"true"`), útil para formularios.
+
+Ejemplo de error (400):
+
+```json
+{
+  "status": "error",
+  "message": "clientEmail debe ser un email válido; time debe tener formato HH:mm (24 hs)",
+  "errors": [
+    { "field": "clientEmail", "message": "clientEmail debe ser un email válido" },
+    { "field": "time", "message": "time debe tener formato HH:mm (24 hs)" }
+  ]
+}
+```
+
+La validación revisa la **forma** de los datos. Las reglas de negocio siguen en la capa de services: que la reserva y el servicio existan (404 / 400) y que agregar un servicio repetido incremente `quantity`.
+
+## Reserva con servicios completos (populate)
+
+La reserva guarda sólo referencias (`{ service: ObjectId, quantity }`). Al consultarla por id, `bookings.dao.js` usa `populate('services.service')` para traer el documento completo de cada servicio:
+
+```bash
+curl http://localhost:8080/api/bookings/<bid>
+```
+
+```json
+{
+  "status": "success",
+  "payload": {
+    "_id": "6ac3f2887e6349b20eecac09",
+    "clientName": "Ana",
+    "clientEmail": "ana@x.com",
+    "date": "2026-10-10",
+    "time": "10:00",
+    "status": "confirmed",
+    "services": [
+      {
+        "service": {
+          "_id": "6ac3f2887e6349b20eecac08",
+          "name": "Masaje",
+          "description": "Descontracturante",
+          "duration": 60,
+          "price": 9000,
+          "category": "Bienestar",
+          "available": true
+        },
+        "quantity": 2
+      }
+    ]
+  }
+}
+```
+
+Si un servicio referenciado fue eliminado, su `service` aparece como `null`.
+
+## Ejemplos con curl
 
 ```bash
 # Crear servicio
@@ -167,4 +287,7 @@ curl -X POST http://localhost:8080/api/bookings -H "Content-Type: application/js
 
 # Agregar servicio a la reserva (repetirlo incrementa quantity)
 curl -X POST http://localhost:8080/api/bookings/<bid>/services/<sid>
+
+# Consultar la reserva con los servicios completos
+curl http://localhost:8080/api/bookings/<bid>
 ```

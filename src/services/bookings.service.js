@@ -1,6 +1,9 @@
 import { bookingsRepository } from '../repositories/bookings.repository.js';
 import { servicesRepository } from '../repositories/services.repository.js';
 
+// La forma y los tipos de los datos ya fueron validados con Zod
+// (src/validations/booking.validation.js). Acá quedan las reglas de negocio:
+// que los servicios existan y que un servicio repetido incremente quantity.
 class BookingsService {
     constructor(bookingRepo, serviceRepo) {
         this.bookingRepository = bookingRepo;
@@ -11,8 +14,9 @@ class BookingsService {
         return await this.bookingRepository.getAll();
     }
 
+    // Devuelve la reserva con los datos completos de cada servicio (populate)
     async getBookingById(id) {
-        const booking = await this.bookingRepository.getById(id);
+        const booking = await this.bookingRepository.getByIdWithServices(id);
         if (!booking) {
             throw new Error(`No se encontró la reserva con el id: ${id}`);
         }
@@ -22,21 +26,12 @@ class BookingsService {
     async createBooking(bookingData) {
         const { clientName, clientEmail, date, time, status, services } = bookingData;
 
-        if (
-            !clientName || String(clientName).trim() === '' ||
-            !clientEmail || String(clientEmail).trim() === '' ||
-            !date || String(date).trim() === '' ||
-            !time || String(time).trim() === ''
-        ) {
-            throw new Error('Los campos clientName, clientEmail, date y time son obligatorios');
-        }
-
         const formattedBooking = {
-            clientName: String(clientName).trim(),
-            clientEmail: String(clientEmail).trim(),
-            date: String(date).trim(),
-            time: String(time).trim(),
-            status: status ? String(status).trim() : 'confirmed',
+            clientName,
+            clientEmail,
+            date,
+            time,
+            status: status ?? 'confirmed',
             services: await this._normalizeServices(services)
         };
 
@@ -46,20 +41,16 @@ class BookingsService {
     // Valida que cada servicio referenciado exista y agrupa duplicados sumando quantity
     // (misma regla de negocio que addServiceToBooking)
     async _normalizeServices(services) {
-        if (services === undefined || services === null) return [];
-        if (!Array.isArray(services)) {
-            throw new Error('El campo services debe ser un array de { service, quantity }');
-        }
+        if (!services) return [];
 
         const grouped = new Map();
         for (const item of services) {
-            const serviceId = String(item?.service ?? '');
+            const serviceId = item.service;
             const service = await this.serviceRepository.getById(serviceId);
             if (!service) {
                 throw new Error(`No se encontró el servicio con el id: ${serviceId}`);
             }
-            const qty = Math.max(1, Number(item.quantity) || 1);
-            grouped.set(serviceId, (grouped.get(serviceId) || 0) + qty);
+            grouped.set(serviceId, (grouped.get(serviceId) || 0) + item.quantity);
         }
 
         return [...grouped].map(([service, quantity]) => ({ service, quantity }));

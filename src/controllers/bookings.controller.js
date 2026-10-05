@@ -54,7 +54,7 @@ export const createBooking = async (req, res) => {
 
 export const addServiceToBooking = async (req, res) => {
     const { bid, sid } = req.params;
-    const quantity = req.body?.quantity || 1;
+    const { quantity } = req.body; // validado por Zod (por defecto 1)
 
     try {
         const updatedBooking = await bookingsService.addServiceToBooking(bid, sid, quantity);
