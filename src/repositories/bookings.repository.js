@@ -24,6 +24,14 @@ class BookingsRepository {
     async update(id, bookingData) {
         return await this.dao.update(id, bookingData);
     }
+
+    async delete(id) {
+        return await this.dao.delete(id);
+    }
+
+    async countByService(serviceId, options) {
+        return await this.dao.countByService(serviceId, options);
+    }
 }
 
 export const bookingsRepository = new BookingsRepository(bookingsDao);

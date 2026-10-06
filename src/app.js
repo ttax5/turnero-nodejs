@@ -5,6 +5,7 @@ import { engine } from 'express-handlebars';
 import servicesRouter from './routes/services.router.js';
 import bookingsRouter from './routes/bookings.router.js';
 import viewsRouter from './routes/views.router.js';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,28 +34,8 @@ app.use('/views', viewsRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/bookings', bookingsRouter);
 
-// Manejador de rutas no encontradas (404)
-app.use((req, res) => {
-    res.status(404).json({
-        status: 'error',
-        message: `Ruta ${req.originalUrl} no encontrada`
-    });
-});
-
-// Manejador de errores: body con JSON mal formado → 400; cualquier otro error → 500
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-    if (err.type === 'entity.parse.failed') {
-        return res.status(400).json({
-            status: 'error',
-            message: 'El body no es un JSON válido'
-        });
-    }
-    console.error(err);
-    res.status(500).json({
-        status: 'error',
-        message: 'Error interno del servidor'
-    });
-});
+// Rutas inexistentes (404) y manejador centralizado de errores
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

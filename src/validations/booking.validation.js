@@ -6,8 +6,8 @@ const quantity = numeric(z
     .int({ error: 'quantity debe ser un número entero' })
     .min(1, { error: 'quantity debe ser mayor o igual a 1' }));
 
-// POST /api/bookings
-export const createBookingSchema = z.object({
+// Datos propios de la reserva (sin los servicios, que tienen sus propios endpoints)
+const bookingFields = {
     clientName: requiredString('clientName'),
     clientEmail: z
         .string({ error: 'clientEmail es obligatorio' })
@@ -26,13 +26,31 @@ export const createBookingSchema = z.object({
         .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'time debe tener formato HH:mm (24 hs)' }),
     status: z
         .enum(['pending', 'confirmed', 'cancelled'], { error: 'status debe ser pending, confirmed o cancelled' })
-        .optional(),
+        .optional()
+};
+
+// POST /api/bookings
+export const createBookingSchema = z.object({
+    ...bookingFields,
     services: z
         .array(z.object({
             service: objectId('service'),
             quantity: quantity.default(1)
         }), { error: 'services debe ser un array de { service, quantity }' })
         .optional()
+});
+
+// PUT /api/bookings/:bid: datos de la reserva, opcionales pero al menos uno
+export const updateBookingSchema = z
+    .object(bookingFields)
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+        error: 'Debe enviar al menos un campo para actualizar (clientName, clientEmail, date, time, status)'
+    });
+
+// Rutas con :bid
+export const bookingIdParamsSchema = z.object({
+    bid: objectId('bid')
 });
 
 // POST /api/bookings/:bid/services/:sid
@@ -43,4 +61,12 @@ export const bookingServiceParamsSchema = z.object({
 
 export const addServiceToBookingSchema = z.object({
     quantity: quantity.default(1)
+});
+
+// PUT /api/bookings/:bid/services/:sid: quantity obligatoria
+export const updateServiceQuantitySchema = z.object({
+    quantity: numeric(z
+        .number({ error: 'quantity es obligatorio y debe ser un número' })
+        .int({ error: 'quantity debe ser un número entero' })
+        .min(1, { error: 'quantity debe ser mayor o igual a 1' }))
 });

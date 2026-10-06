@@ -44,7 +44,7 @@
         <tbody id="bookings-list">
             {{#each bookings}}
                 <tr>
-                    <td>{{clientName}}</td>
+                    <td><a href="/views/bookings/{{_id}}">{{clientName}}</a></td>
                     <td>{{clientEmail}}</td>
                     <td>{{date}}</td>
                     <td>{{time}}</td>

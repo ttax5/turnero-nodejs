@@ -30,6 +30,20 @@ class BookingsDao {
             runValidators: true
         }).lean();
     }
+
+    async delete(id) {
+        if (!mongoose.isValidObjectId(id)) return null;
+        return await BookingModel.findByIdAndDelete(id).lean();
+    }
+
+    // Cantidad de reservas que incluyen el servicio, excluyendo los estados indicados
+    async countByService(serviceId, { excludeStatuses = [] } = {}) {
+        if (!mongoose.isValidObjectId(serviceId)) return 0;
+        return await BookingModel.countDocuments({
+            'services.service': serviceId,
+            status: { $nin: excludeStatuses }
+        });
+    }
 }
 
 export const bookingsDao = new BookingsDao();

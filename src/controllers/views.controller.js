@@ -1,5 +1,6 @@
 import { servicesService } from '../services/services.service.js';
 import { bookingsService } from '../services/bookings.service.js';
+import { NotFoundError } from '../utils/errors.js';
 
 // Total de turnos de una reserva (suma de quantity de cada servicio asociado)
 const withTotals = (bookings) => bookings.map(booking => ({
@@ -52,6 +53,45 @@ export const renderAvailability = async (req, res) => {
         res.status(500).render('error', {
             title: 'Error',
             message: 'No se pudo cargar la disponibilidad'
+        });
+    }
+};
+
+// Agrega subtotales y totales a una reserva con servicios populados.
+// Si un servicio referenciado ya no existe, populate devuelve null.
+const withBookingTotals = (booking) => {
+    const items = (booking.services || []).map(({ service, quantity }) => ({
+        service,
+        quantity,
+        missing: !service,
+        subtotal: service ? service.price * quantity : 0,
+        minutes: service ? service.duration * quantity : 0
+    }));
+
+    return {
+        ...booking,
+        items,
+        totalPrice: items.reduce((acc, item) => acc + item.subtotal, 0),
+        totalMinutes: items.reduce((acc, item) => acc + item.minutes, 0),
+        totalUnits: items.reduce((acc, item) => acc + item.quantity, 0)
+    };
+};
+
+// GET /views/bookings/:bid - Detalle de una reserva con sus servicios completos (populate)
+export const renderBookingDetail = async (req, res) => {
+    try {
+        const booking = await bookingsService.getBookingById(req.params.bid);
+        res.render('booking-detail', {
+            title: `Reserva de ${booking.clientName}`,
+            page: 'booking-detail',
+            realtime: true,
+            booking: withBookingTotals(booking)
+        });
+    } catch (error) {
+        const notFound = error instanceof NotFoundError;
+        res.status(notFound ? 404 : 500).render('error', {
+            title: notFound ? 'Reserva no encontrada' : 'Error',
+            message: notFound ? error.message : 'No se pudo cargar la reserva'
         });
     }
 };

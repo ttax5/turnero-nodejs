@@ -1,10 +1,13 @@
 import { servicesRepository } from '../repositories/services.repository.js';
+import { bookingsRepository } from '../repositories/bookings.repository.js';
+import { NotFoundError, ConflictError } from '../utils/errors.js';
 
 // La forma y los tipos de los datos ya fueron validados con Zod
 // (src/validations/service.validation.js) antes de llegar a esta capa.
 class ServicesService {
-    constructor(repository) {
+    constructor(repository, bookingRepo) {
         this.repository = repository;
+        this.bookingRepository = bookingRepo;
     }
 
     // Listado completo (lo usan las vistas y las notificaciones en tiempo real)
@@ -45,7 +48,7 @@ class ServicesService {
     async getServiceById(id) {
         const service = await this.repository.getById(id);
         if (!service) {
-            throw new Error(`No se encontró el servicio con el id: ${id}`);
+            throw new NotFoundError(`No se encontró el servicio con el id: ${id}`);
         }
         return service;
     }
@@ -59,7 +62,7 @@ class ServicesService {
         // Verificar existencia primero
         const existingService = await this.repository.getById(id);
         if (!existingService) {
-            throw new Error(`No se encontró el servicio con el id: ${id}`);
+            throw new NotFoundError(`No se encontró el servicio con el id: ${id}`);
         }
 
         // El schema de Zod ya descartó campos desconocidos (incluido _id): el id no se modifica
@@ -69,11 +72,23 @@ class ServicesService {
     async deleteService(id) {
         const existingService = await this.repository.getById(id);
         if (!existingService) {
-            throw new Error(`No se encontró el servicio con el id: ${id}`);
+            throw new NotFoundError(`No se encontró el servicio con el id: ${id}`);
+        }
+
+        // Regla de negocio: no se elimina un servicio que forma parte de reservas activas
+        // (dejaría referencias rotas). Las reservas canceladas no cuentan.
+        const activeBookings = await this.bookingRepository.countByService(id, {
+            excludeStatuses: ['cancelled']
+        });
+        if (activeBookings > 0) {
+            throw new ConflictError(
+                `No se puede eliminar el servicio: está incluido en ${activeBookings} reserva(s) activa(s). ` +
+                'Quitalo de esas reservas o cancelalas primero, o marcalo como no disponible.'
+            );
         }
 
         return await this.repository.delete(id);
     }
 }
 
-export const servicesService = new ServicesService(servicesRepository);
+export const servicesService = new ServicesService(servicesRepository, bookingsRepository);
