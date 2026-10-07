@@ -1,9 +1,68 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { ValidationError, NotFoundError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const SERVICE_FIELDS = ['name', 'description', 'duration', 'price', 'category', 'available'];
+
+const isBlank = (value) => value === undefined || value === null || String(value).trim() === '';
+const isBooleanLike = (value) => typeof value === 'boolean' || value === 'true' || value === 'false';
+const toBoolean = (value) => value === true || value === 'true';
+
+/**
+ * Único lugar donde se validan los datos de un servicio.
+ * - partial = false (alta): todos los campos son obligatorios.
+ * - partial = true (modificación): los campos son opcionales, pero los que llegan
+ *   tienen que ser válidos y tiene que llegar al menos uno.
+ * Devuelve los datos normalizados (tipos convertidos y textos recortados).
+ */
+const validateServiceData = (data, { partial = false } = {}) => {
+    const input = data && typeof data === 'object' ? data : {};
+    const fields = SERVICE_FIELDS.filter(field => input[field] !== undefined);
+
+    if (!partial) {
+        const missing = SERVICE_FIELDS.filter(field => isBlank(input[field]));
+        if (missing.length > 0) {
+            throw new ValidationError(`Faltan campos obligatorios: ${missing.join(', ')}`);
+        }
+    } else if (fields.length === 0) {
+        throw new ValidationError(`Debe enviar al menos un campo para actualizar: ${SERVICE_FIELDS.join(', ')}`);
+    }
+
+    const normalized = {};
+    for (const field of fields) {
+        const value = input[field];
+        switch (field) {
+            case 'name':
+            case 'description':
+            case 'category':
+                if (isBlank(value)) throw new ValidationError(`El campo ${field} no puede estar vacío`);
+                normalized[field] = String(value).trim();
+                break;
+            case 'duration':
+                if (isBlank(value) || !Number.isFinite(Number(value)) || Number(value) <= 0) {
+                    throw new ValidationError('El campo duration debe ser un número mayor a 0');
+                }
+                normalized.duration = Number(value);
+                break;
+            case 'price':
+                if (isBlank(value) || !Number.isFinite(Number(value)) || Number(value) < 0) {
+                    throw new ValidationError('El campo price debe ser un número mayor o igual a 0');
+                }
+                normalized.price = Number(value);
+                break;
+            case 'available':
+                if (!isBooleanLike(value)) throw new ValidationError('El campo available debe ser true o false');
+                normalized.available = toBoolean(value);
+                break;
+        }
+    }
+    return normalized;
+};
 
 export class ServiceManager {
     constructor(customPath) {
@@ -12,7 +71,7 @@ export class ServiceManager {
 
     /**
      * Lee el archivo services.json y devuelve el array de servicios.
-     * Si el archivo no existe o está vacío, lo inicializa como un array vacío.
+     * Si el archivo no existe, lo crea con un array vacío.
      */
     async readServices() {
         try {
@@ -21,7 +80,6 @@ export class ServiceManager {
             return Array.isArray(parsed) ? parsed : [];
         } catch (error) {
             if (error.code === 'ENOENT') {
-                // Si el archivo no existe, lo creamos con un array vacío
                 await this.writeServices([]);
                 return [];
             }
@@ -39,53 +97,51 @@ export class ServiceManager {
     }
 
     /**
-     * Obtiene todos los servicios persistidos.
+     * Obtiene los servicios. Filtros opcionales:
+     * - category: compara sin distinguir mayúsculas
+     * - available: 'true' / 'false' (o booleano)
      */
-    async getServices() {
-        return await this.readServices();
+    async getServices(filters = {}) {
+        const { category, available } = filters;
+        let services = await this.readServices();
+
+        if (!isBlank(category)) {
+            const wanted = String(category).trim().toLowerCase();
+            services = services.filter(s => String(s.category).toLowerCase() === wanted);
+        }
+
+        if (available !== undefined) {
+            if (!isBooleanLike(available)) {
+                throw new ValidationError('El filtro available debe ser true o false');
+            }
+            const isAvailable = toBoolean(available);
+            services = services.filter(s => s.available === isAvailable);
+        }
+
+        return services;
     }
 
     /**
-     * Obtiene un servicio específico por su ID.
+     * Obtiene un servicio por su ID. Si no existe lanza NotFoundError.
      */
     async getServiceById(id) {
         const services = await this.readServices();
         const service = services.find(s => String(s.id) === String(id));
         if (!service) {
-            throw new Error(`No se encontró el servicio con el id: ${id}`);
+            throw new NotFoundError(`No se encontró el servicio con el id: ${id}`);
         }
         return service;
     }
 
     /**
-     * Agrega un nuevo servicio validando campos obligatorios y generando un ID único.
+     * Agrega un servicio. Valida los campos y genera el id automáticamente
+     * (si llega un id en los datos, se ignora).
      */
     async addService(serviceData) {
-        const { name, description, duration, price, category, available } = serviceData;
-
-        // Validaciones de presencia de campos obligatorios
-        if (
-            name === undefined || name === null || String(name).trim() === '' ||
-            description === undefined || description === null || String(description).trim() === '' ||
-            duration === undefined || duration === null || isNaN(Number(duration)) ||
-            price === undefined || price === null || isNaN(Number(price)) ||
-            category === undefined || category === null || String(category).trim() === '' ||
-            available === undefined || available === null
-        ) {
-            throw new Error('Todos los campos son obligatorios: name, description, duration, price, category, available');
-        }
-
+        const validData = validateServiceData(serviceData);
         const services = await this.readServices();
 
-        const newService = {
-            id: Date.now().toString(),
-            name: String(name).trim(),
-            description: String(description).trim(),
-            duration: Number(duration),
-            price: Number(price),
-            category: String(category).trim(),
-            available: typeof available === 'boolean' ? available : available === 'true'
-        };
+        const newService = { id: crypto.randomUUID(), ...validData };
 
         services.push(newService);
         await this.writeServices(services);
@@ -93,30 +149,21 @@ export class ServiceManager {
     }
 
     /**
-     * Actualiza un servicio existente por su ID manteniendo inmutable el id.
+     * Actualiza un servicio existente. El id nunca se modifica.
      */
     async updateService(id, serviceData) {
         const services = await this.readServices();
         const index = services.findIndex(s => String(s.id) === String(id));
 
         if (index === -1) {
-            throw new Error(`No se encontró el servicio con el id: ${id}`);
+            throw new NotFoundError(`No se encontró el servicio con el id: ${id}`);
         }
 
-        const current = services[index];
+        const validData = validateServiceData(serviceData, { partial: true });
         const updatedService = {
-            ...current,
-            ...(serviceData.name !== undefined && { name: String(serviceData.name).trim() }),
-            ...(serviceData.description !== undefined && { description: String(serviceData.description).trim() }),
-            ...(serviceData.duration !== undefined && { duration: Number(serviceData.duration) }),
-            ...(serviceData.price !== undefined && { price: Number(serviceData.price) }),
-            ...(serviceData.category !== undefined && { category: String(serviceData.category).trim() }),
-            ...(serviceData.available !== undefined && {
-                available: typeof serviceData.available === 'boolean'
-                    ? serviceData.available
-                    : serviceData.available === 'true'
-            }),
-            id: current.id // El ID jamás debe ser modificado
+            ...services[index],
+            ...validData,
+            id: services[index].id // El id jamás se modifica
         };
 
         services[index] = updatedService;
@@ -132,7 +179,7 @@ export class ServiceManager {
         const index = services.findIndex(s => String(s.id) === String(id));
 
         if (index === -1) {
-            throw new Error(`No se encontró el servicio con el id: ${id}`);
+            throw new NotFoundError(`No se encontró el servicio con el id: ${id}`);
         }
 
         const [deletedService] = services.splice(index, 1);

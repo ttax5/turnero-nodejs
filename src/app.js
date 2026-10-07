@@ -32,4 +32,14 @@ app.use((req, res) => {
     });
 });
 
+// Body con JSON mal formado → 400 en formato JSON (en lugar de la página de error de Express)
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    if (err.type === 'entity.parse.failed') {
+        return res.status(400).json({ status: 'error', message: 'El body no es un JSON válido' });
+    }
+    console.error(err);
+    res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
+});
+
 export default app;
