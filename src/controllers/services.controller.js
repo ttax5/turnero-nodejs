@@ -1,96 +1,77 @@
-import { servicesService } from '../services/services.service.js';
+import { ServiceManager } from '../managers/ServiceManager.js';
 
+const serviceManager = new ServiceManager();
+
+// Los controllers sólo leen la request, llaman al manager y arman la response.
+// Las validaciones y el filtrado viven en el manager; acá sólo se traduce el
+// error que lance (400 o 404) a la respuesta HTTP. Cualquier otro error es 500.
+const sendError = (res, error) => {
+    res.status(error.statusCode || 500).json({
+        status: 'error',
+        message: error.statusCode ? error.message : 'Error interno del servidor'
+    });
+};
+
+// GET /api/services?category=&available=
 export const getServices = async (req, res) => {
     try {
         const { category, available } = req.query;
-        const services = await servicesService.getServices({ category, available });
-        
-        res.status(200).json({
-            status: 'success',
-            payload: services
-        });
+        const services = await serviceManager.getServices({ category, available });
+        res.status(200).json({ status: 'success', payload: services });
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: 'Error al obtener los servicios',
-            error: error.message
-        });
+        sendError(res, error);
     }
 };
 
+// GET /api/services/:sid
 export const getServiceById = async (req, res) => {
-    const { sid } = req.params;
     try {
-        const service = await servicesService.getServiceById(sid);
-        res.status(200).json({
-            status: 'success',
-            payload: service
-        });
+        const service = await serviceManager.getServiceById(req.params.sid);
+        res.status(200).json({ status: 'success', payload: service });
     } catch (error) {
-        res.status(404).json({
-            status: 'error',
-            message: error.message
-        });
+        sendError(res, error);
     }
 };
 
+// POST /api/services
 export const createService = async (req, res) => {
     try {
-        const newService = await servicesService.createService(req.body);
-
+        const newService = await serviceManager.addService(req.body);
         res.status(201).json({
             status: 'success',
             message: 'Servicio creado exitosamente',
             payload: newService
         });
     } catch (error) {
-        res.status(400).json({
-            status: 'error',
-            message: error.message
-        });
+        sendError(res, error);
     }
 };
 
+// PUT /api/services/:sid
 export const updateService = async (req, res) => {
-    const { sid } = req.params;
-    const updateData = req.body;
-
-    if (!updateData || Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-            status: 'error',
-            message: 'Debe enviar al menos un campo para actualizar'
-        });
-    }
-
     try {
-        const updatedService = await servicesService.updateService(sid, updateData);
+        const updatedService = await serviceManager.updateService(req.params.sid, req.body);
         res.status(200).json({
             status: 'success',
             message: 'Servicio actualizado exitosamente',
             payload: updatedService
         });
     } catch (error) {
-        // Datos inválidos según el schema → 400; servicio inexistente → 404
-        res.status(error.name === 'ValidationError' ? 400 : 404).json({
-            status: 'error',
-            message: error.message
-        });
+        sendError(res, error);
     }
 };
 
+// DELETE /api/services/:sid
 export const deleteService = async (req, res) => {
     const { sid } = req.params;
     try {
-        const deletedService = await servicesService.deleteService(sid);
+        const deletedService = await serviceManager.deleteService(sid);
         res.status(200).json({
             status: 'success',
             message: `Servicio con id ${sid} eliminado exitosamente`,
             payload: deletedService
         });
     } catch (error) {
-        res.status(404).json({
-            status: 'error',
-            message: error.message
-        });
+        sendError(res, error);
     }
 };
