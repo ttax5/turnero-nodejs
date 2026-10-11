@@ -31,7 +31,7 @@ Proyecto final de *Programación Backend I* (Coderhouse).
 ## Requisitos
 
 - Node.js 20 o superior.
-- pnpm 11. El `pnpm-lock.yaml` usa el formato de pnpm 11; con versiones anteriores falla con `ERR_PNPM_BROKEN_LOCKFILE`.
+- npm, o pnpm 11 (el `pnpm-lock.yaml` usa el formato de pnpm 11; con versiones anteriores de pnpm falla con `ERR_PNPM_BROKEN_LOCKFILE`).
 - Un cluster en MongoDB Atlas, con un usuario de base de datos y tu IP habilitada en *Network Access*.
 
 ## Instalación y ejecución
@@ -39,11 +39,13 @@ Proyecto final de *Programación Backend I* (Coderhouse).
 ```bash
 git clone https://github.com/ttax5/turnero-nodejs.git
 cd turnero-nodejs
-pnpm install
+npm install               # o: pnpm install
 cp .env.example .env      # completar MONGO_URI con la URI de tu cluster
-pnpm run seed             # (opcional) carga 8 servicios y 1 reserva de ejemplo
-pnpm run dev              # modo desarrollo (se reinicia con cada cambio); o: pnpm start
+npm run seed              # (opcional) carga 8 servicios y 1 reserva de ejemplo
+npm run dev               # modo desarrollo (se reinicia con cada cambio); o: npm start
 ```
+
+Con pnpm, los mismos scripts se ejecutan con `pnpm run <script>`.
 
 Con el servidor levantado:
 
@@ -54,19 +56,47 @@ Con el servidor levantado:
 
 | Script | Descripción |
 |--------|-------------|
-| `pnpm start` | Levanta el servidor |
-| `pnpm run dev` | Levanta el servidor con `node --watch` |
-| `pnpm run seed` | Carga datos de ejemplo si la colección `services` está vacía |
+| `npm start` | Levanta el servidor |
+| `npm run dev` | Levanta el servidor con `node --watch` |
+| `npm run seed` | Carga datos de ejemplo si la colección `services` está vacía |
+| `npm test` | Corre los tests automáticos contra un MongoDB en memoria (no toca Atlas) |
 
 ### Variables de entorno
 
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
-| `PORT` | Puerto del servidor | `8080` |
+| `PORT` | Puerto del servidor (entero positivo) | `8080` |
 | `NODE_ENV` | Entorno | `development` |
-| `MONGO_URI` | URI de conexión a MongoDB Atlas (obligatoria) | `mongodb+srv://user:pass@cluster.mongodb.net/booking_system` |
+| `MONGO_URI` | URI de conexión a MongoDB Atlas | `mongodb+srv://user:pass@cluster.mongodb.net/booking_system` |
 
-`.env.example` tiene la plantilla. El archivo `.env` no se sube al repositorio porque está en `.gitignore`. Si falta `MONGO_URI` o la conexión falla, la aplicación termina con un mensaje de error en vez de levantarse sin base de datos.
+Las tres son obligatorias. `.env.example` tiene la plantilla. El archivo `.env` no se sube al repositorio porque está en `.gitignore`. `src/config/env.config.js` valida las variables al iniciar: si falta alguna, si `PORT` no es un número válido o si la conexión a MongoDB falla, la aplicación termina con un mensaje claro en vez de levantarse a medias:
+
+```text
+❌ FATAL ERROR: faltan variables de entorno obligatorias: MONGO_URI.
+   Copiá .env.example a .env y completá los valores.
+```
+
+### Tests
+
+```bash
+npm test
+```
+
+`tests/api.test.js` usa el runner nativo `node:test`. Levanta la API sobre un **MongoDB en memoria** (`mongodb-memory-server-core`; la primera vez descarga el binario de MongoDB), así que no necesita Atlas ni modifica tus datos. Cubre:
+
+- CRUD de servicios, con validaciones (400), inexistentes (404) y servicio en uso (409).
+- Filtros, paginación, ordenamiento y query params inválidos de `GET /api/services`.
+- Reservas: crear, listar, consultar con `populate`, agregar servicios (incrementa `quantity`), modificar cantidades, quitar servicios, vaciar, actualizar y eliminar. También verifica que en MongoDB se guarda sólo `{ service: ObjectId, quantity }`.
+- Las vistas de Handlebars renderizadas con datos reales.
+- Los eventos de Socket.io (`servicesUpdated`, `bookingsUpdated`) con un cliente real.
+- La separación de capas (analiza los imports de cada carpeta) y que `.gitignore` / `.env.example` estén bien.
+
+```text
+# tests 39
+# suites 7
+# pass 39
+# fail 0
+```
 
 ## Arquitectura
 
@@ -92,7 +122,7 @@ src/
 ├── app.js                       # Express: middlewares, Handlebars, estáticos, routers y manejo de errores
 ├── server.js                    # Conecta a MongoDB, crea el servidor HTTP, inicia Socket.io y escucha
 ├── config/
-│   ├── env.config.js            # Variables de entorno (valida MONGO_URI)
+│   ├── env.config.js            # Carga y valida PORT, NODE_ENV y MONGO_URI
 │   └── database.config.js       # Conexión centralizada a MongoDB
 ├── routes/
 │   ├── services.router.js
@@ -138,6 +168,8 @@ src/
 │   └── js/socket.js             # Cliente Socket.io: escucha eventos y redibuja la vista
 └── scripts/
     └── seed.js                  # Datos de ejemplo
+tests/
+└── api.test.js                  # Tests de API, vistas, Socket.io y capas (npm test)
 ```
 
 ## Modelos
@@ -389,3 +421,28 @@ curl -X DELETE http://localhost:8080/api/bookings/<bid>
 - [ ] Actualizar el estado de la reserva y eliminarla
 - [ ] Casos de error: servicio o reserva inexistente (404), datos inválidos (400), servicio no disponible o reserva cancelada (409)
 - [ ] Vistas `/views/services`, `/views/availability` y `/views/bookings/:bid` actualizándose sin recargar
+
+## Criterios de evaluación y evidencia
+
+| Criterio | Dónde verlo |
+|----------|-------------|
+| **Arquitectura en capas** (20%) | `src/routes` → `src/controllers` → `src/services` → `src/repositories` → `src/dao` → `src/dao/models`, más `src/config`, `src/validations`, `src/middlewares`, `src/sockets` y `src/views`. Ver [Arquitectura](#arquitectura). Suite de tests *"Arquitectura en capas"* |
+| **Gestión de servicios** (20%) | `POST`, `GET`, `GET /:sid`, `PUT /:sid` y `DELETE /:sid` en `/api/services`, validados con Zod y persistidos en MongoDB. Suite *"Servicios: CRUD"* |
+| **Gestión de reservas** (15%) | Crear, listar, consultar, agregar servicios, modificar cantidades (`PUT /:bid/services/:sid`), quitar servicios (`DELETE /:bid/services/:sid`), vaciar (`DELETE /:bid/services`) y eliminar (`DELETE /:bid`). Suite *"Reservas"* |
+| **Persistencia, consultas y validación** (15%) | `GET /api/services` con `category`, `available`, `page`, `limit`, `sortBy` y `order` resueltos en MongoDB (`services.dao.js`). Esquemas de Zod en `src/validations/` aplicados como middlewares. Suite *"Servicios: filtros, paginación y ordenamiento"* |
+| **Relaciones y populate** (10%) | `booking.model.js`: `services: [{ service: ObjectId ref 'services', quantity }]`. `bookings.dao.js`: `populate('services.service')` en `GET /api/bookings/:bid` y en la vista de detalle |
+| **Vistas y WebSockets** (10%) | Vistas `/views`, `/views/services`, `/views/availability` y `/views/bookings/:bid`. Socket.io emite `servicesUpdated` / `bookingsUpdated` y las vistas se actualizan sin recargar. Suites *"Vistas con Handlebars"* y *"Tiempo real con Socket.io"* |
+| **Documentación y entrega** (10%) | Este README, `.env.example`, scripts `start` / `dev` / `seed` / `test` y `.gitignore` con `node_modules/` y `.env`. El repositorio no incluye `node_modules`, `.env` ni credenciales |
+
+## Historial de entregas
+
+Cada pre-entrega quedó en su propia rama. `entrega-final` las unifica a todas:
+
+| Rama | Contenido |
+|------|-----------|
+| `main` / `pre-entrega-4` | API con Express Router, controllers y managers sobre FileSystem (JSON) |
+| `pre-entrega-5` | Arquitectura en capas: services, repositories y DAO |
+| `pre-entrega-6` | Persistencia en MongoDB Atlas con Mongoose |
+| `Pre-entrega-7` | Vistas con Handlebars y tiempo real con Socket.io |
+| `pre-entrega-8` | Paginación, filtros y ordenamiento, validación con Zod y `populate` |
+| `entrega-final` | Gestión completa de reservas, validación estricta del `.env` y tests automáticos |
