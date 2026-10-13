@@ -7,7 +7,7 @@ API REST con **Node.js + Express + MongoDB Atlas (Mongoose)**, organizada en arq
 ## Requisitos
 
 - Node.js 20+
-- pnpm 11 (el `pnpm-lock.yaml` usa el formato de pnpm 11; con versiones anteriores falla con `ERR_PNPM_BROKEN_LOCKFILE`)
+- npm (incluido con Node.js) o pnpm
 - Un cluster en MongoDB Atlas con usuario de base de datos y tu IP habilitada en *Network Access*
 
 ## Instalación y ejecución
@@ -15,10 +15,10 @@ API REST con **Node.js + Express + MongoDB Atlas (Mongoose)**, organizada en arq
 ```bash
 git clone https://github.com/ttax5/turnero-nodejs.git
 cd turnero-nodejs
-pnpm install
+npm install               # o: pnpm install
 cp .env.example .env      # completar MONGO_URI con la URI de tu cluster
-pnpm run seed             # (opcional) carga servicios de ejemplo en la colección services
-pnpm run dev              # o: pnpm start
+npm run seed              # (opcional) carga servicios de ejemplo en la colección services
+npm run dev               # o: npm start
 ```
 
 ### Variables de entorno
@@ -124,7 +124,7 @@ Socket.io comparte el servidor HTTP con Express (`server.js`). Cuando una acció
 
 ### Cómo probarlo
 
-1. Levantar el servidor (`pnpm run dev`) y abrir `http://localhost:8080/views/availability` en el navegador.
+1. Levantar el servidor (`npm run dev`) y abrir `http://localhost:8080/views/availability` en el navegador.
 2. Desde Postman / Thunder Client / curl, cambiar la disponibilidad de un servicio:
    ```bash
    curl -X PUT http://localhost:8080/api/services/<sid> -H "Content-Type: application/json" -d '{"available":false}'
