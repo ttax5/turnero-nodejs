@@ -1,6 +1,13 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { engine } from 'express-handlebars';
 import servicesRouter from './routes/services.router.js';
 import bookingsRouter from './routes/bookings.router.js';
+import viewsRouter from './routes/views.router.js';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
@@ -8,38 +15,27 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Archivos estáticos (CSS y JS del cliente, incluido socket.js)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Configuración de Handlebars (rutas absolutas para no depender del directorio de ejecución)
+app.engine('handlebars', engine({
+    layoutsDir: path.join(__dirname, 'views', 'layouts'),
+    defaultLayout: 'main'
+}));
+app.set('view engine', 'handlebars');
+app.set('views', path.join(__dirname, 'views'));
+
+// Vistas renderizadas con Handlebars
+app.get('/', (req, res) => res.redirect('/views'));
+app.use('/views', viewsRouter);
+
 // Rutas principales de la API
 app.use('/api/services', servicesRouter);
 app.use('/api/bookings', bookingsRouter);
 
-// Ruta de bienvenida / salud
-app.get('/', (req, res) => {
-    res.json({
-        message: 'Bienvenido a la API del Sistema de Turnos y Reservas',
-        endpoints: {
-            services: '/api/services',
-            bookings: '/api/bookings'
-        },
-        version: '1.0.0'
-    });
-});
-
-// Manejador de rutas no encontradas (404)
-app.use((req, res) => {
-    res.status(404).json({
-        status: 'error',
-        message: `Ruta ${req.originalUrl} no encontrada`
-    });
-});
-
-// Body con JSON mal formado → 400 en formato JSON (en lugar de la página de error de Express)
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-    if (err.type === 'entity.parse.failed') {
-        return res.status(400).json({ status: 'error', message: 'El body no es un JSON válido' });
-    }
-    console.error(err);
-    res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
-});
+// Rutas inexistentes (404) y manejador centralizado de errores
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

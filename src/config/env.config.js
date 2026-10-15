@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Variables obligatorias: si falta alguna, la app no arranca (fail-fast)
-const REQUIRED_VARS = ['PORT', 'NODE_ENV'];
+const REQUIRED_VARS = ['PORT', 'NODE_ENV', 'MONGO_URI'];
 
 const missing = REQUIRED_VARS.filter(name => !process.env[name] || process.env[name].trim() === '');
 if (missing.length > 0) {
@@ -20,7 +20,8 @@ if (!Number.isInteger(port) || port <= 0) {
 
 const config = {
     port,
-    nodeEnv: process.env.NODE_ENV.trim()
+    nodeEnv: process.env.NODE_ENV.trim(),
+    mongoUri: process.env.MONGO_URI.trim()
 };
 
 export default config;

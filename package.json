@@ -1,17 +1,22 @@
 {
   "name": "turnero-nodejs",
   "version": "1.0.0",
-  "description": "Sistema backend de turnos y reservas con Node.js, Express y FileSystem (JSON)",
+  "description": "Sistema backend de turnos y reservas con Node.js, Express y MongoDB",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "seed": "node src/scripts/seed.js",
     "test": "node --test"
   },
   "keywords": [
     "node",
     "express",
-    "backend",
+    "mongodb",
+    "mongoose",
+    "socket.io",
+    "handlebars",
+    "zod",
     "turnos",
     "reservas"
   ],
@@ -27,6 +32,14 @@
   "type": "module",
   "dependencies": {
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "express-handlebars": "^9.0.1",
+    "mongoose": "^9.10.1",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "mongodb-memory-server-core": "^11.3.0",
+    "socket.io-client": "^4.8.4"
   }
 }

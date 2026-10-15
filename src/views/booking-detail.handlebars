@@ -1,0 +1,66 @@
+<p class="breadcrumb"><a href="/views/availability">← Volver a disponibilidad</a></p>
+
+<div class="page-header">
+    <h1>Reserva de {{booking.clientName}}</h1>
+    <span class="live" id="live-status">Conectando…</span>
+</div>
+<p class="hint">Se actualiza sola si cambian los datos de la reserva, sus servicios o los servicios en sí (por ejemplo, el precio).</p>
+
+<div id="booking-detail" data-booking-id="{{booking._id}}">
+    <section class="card summary">
+        <dl>
+            <dt>Cliente</dt><dd>{{booking.clientName}}</dd>
+            <dt>Email</dt><dd>{{booking.clientEmail}}</dd>
+            <dt>Fecha</dt><dd>{{booking.date}}</dd>
+            <dt>Hora</dt><dd>{{booking.time}}</dd>
+            <dt>Estado</dt><dd><span class="badge status-{{booking.status}}">{{booking.status}}</span></dd>
+        </dl>
+    </section>
+
+    <h2>Servicios ({{booking.totalUnits}})</h2>
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Servicio</th>
+                    <th>Categoría</th>
+                    <th>Duración</th>
+                    <th>Precio unitario</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each booking.items}}
+                    {{#if missing}}
+                        <tr>
+                            <td colspan="4" class="empty">Servicio eliminado</td>
+                            <td>{{quantity}}</td>
+                            <td>—</td>
+                        </tr>
+                    {{else}}
+                        <tr>
+                            <td><strong>{{service.name}}</strong><br><span class="muted">{{service.description}}</span></td>
+                            <td>{{service.category}}</td>
+                            <td>{{service.duration}} min</td>
+                            <td>${{service.price}}</td>
+                            <td>{{quantity}}</td>
+                            <td>${{subtotal}}</td>
+                        </tr>
+                    {{/if}}
+                {{else}}
+                    <tr><td colspan="6" class="empty">La reserva no tiene servicios.</td></tr>
+                {{/each}}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="2">Total</th>
+                    <th>{{booking.totalMinutes}} min</th>
+                    <th></th>
+                    <th>{{booking.totalUnits}}</th>
+                    <th>${{booking.totalPrice}}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

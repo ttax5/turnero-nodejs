@@ -1,77 +1,59 @@
-import { ServiceManager } from '../managers/ServiceManager.js';
+import { servicesService } from '../services/services.service.js';
+import { notifyServicesUpdated } from '../sockets/socket.js';
 
-const serviceManager = new ServiceManager();
+// Los errores (servicio inexistente, servicio en uso, etc.) los lanza el service y
+// los responde el manejador centralizado (middlewares/error.middleware.js).
 
-// Los controllers sólo leen la request, llaman al manager y arman la response.
-// Las validaciones y el filtrado viven en el manager; acá sólo se traduce el
-// error que lance (400 o 404) a la respuesta HTTP. Cualquier otro error es 500.
-const sendError = (res, error) => {
-    res.status(error.statusCode || 500).json({
-        status: 'error',
-        message: error.statusCode ? error.message : 'Error interno del servidor'
+// Responde y avisa en tiempo real a las vistas conectadas
+const respondAndNotify = (res, statusCode, message, payload) => {
+    res.status(statusCode).json({ status: 'success', message, payload });
+    notifyServicesUpdated();
+};
+
+// Arma el link a otra página conservando los demás query params
+const buildPageLink = (req, page) => {
+    const params = new URLSearchParams(req.query);
+    params.set('page', page);
+    return `${req.baseUrl}?${params.toString()}`;
+};
+
+export const getServices = async (req, res) => {
+    // Query ya validado y convertido por el middleware validateQuery
+    const result = await servicesService.getPaginatedServices(req.validatedQuery);
+
+    res.status(200).json({
+        status: 'success',
+        payload: result.docs,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        hasPrevPage: result.hasPrevPage,
+        hasNextPage: result.hasNextPage,
+        prevPage: result.prevPage,
+        nextPage: result.nextPage,
+        prevLink: result.hasPrevPage ? buildPageLink(req, result.prevPage) : null,
+        nextLink: result.hasNextPage ? buildPageLink(req, result.nextPage) : null
     });
 };
 
-// GET /api/services?category=&available=
-export const getServices = async (req, res) => {
-    try {
-        const { category, available } = req.query;
-        const services = await serviceManager.getServices({ category, available });
-        res.status(200).json({ status: 'success', payload: services });
-    } catch (error) {
-        sendError(res, error);
-    }
-};
-
-// GET /api/services/:sid
 export const getServiceById = async (req, res) => {
-    try {
-        const service = await serviceManager.getServiceById(req.params.sid);
-        res.status(200).json({ status: 'success', payload: service });
-    } catch (error) {
-        sendError(res, error);
-    }
+    const service = await servicesService.getServiceById(req.params.sid);
+    res.status(200).json({ status: 'success', payload: service });
 };
 
-// POST /api/services
 export const createService = async (req, res) => {
-    try {
-        const newService = await serviceManager.addService(req.body);
-        res.status(201).json({
-            status: 'success',
-            message: 'Servicio creado exitosamente',
-            payload: newService
-        });
-    } catch (error) {
-        sendError(res, error);
-    }
+    const newService = await servicesService.createService(req.body);
+    respondAndNotify(res, 201, 'Servicio creado exitosamente', newService);
 };
 
-// PUT /api/services/:sid
 export const updateService = async (req, res) => {
-    try {
-        const updatedService = await serviceManager.updateService(req.params.sid, req.body);
-        res.status(200).json({
-            status: 'success',
-            message: 'Servicio actualizado exitosamente',
-            payload: updatedService
-        });
-    } catch (error) {
-        sendError(res, error);
-    }
+    const updated = await servicesService.updateService(req.params.sid, req.body);
+    respondAndNotify(res, 200, 'Servicio actualizado exitosamente', updated);
 };
 
-// DELETE /api/services/:sid
 export const deleteService = async (req, res) => {
     const { sid } = req.params;
-    try {
-        const deletedService = await serviceManager.deleteService(sid);
-        res.status(200).json({
-            status: 'success',
-            message: `Servicio con id ${sid} eliminado exitosamente`,
-            payload: deletedService
-        });
-    } catch (error) {
-        sendError(res, error);
-    }
+    const deleted = await servicesService.deleteService(sid);
+    respondAndNotify(res, 200, `Servicio con id ${sid} eliminado exitosamente`, deleted);
 };
