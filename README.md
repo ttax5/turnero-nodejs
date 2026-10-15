@@ -411,29 +411,6 @@ curl http://localhost:8080/api/bookings/<bid>
 curl -X DELETE http://localhost:8080/api/bookings/<bid>
 ```
 
-## Checklist de pruebas manuales
-
-- [ ] Crear, listar (con filtros, paginación y orden), consultar, actualizar y eliminar servicios
-- [ ] Crear una reserva y consultarla con populate
-- [ ] Agregar un servicio a la reserva (dos veces, para ver que se incrementa `quantity`)
-- [ ] Modificar la cantidad de un servicio de la reserva
-- [ ] Quitar un servicio de la reserva y vaciarla
-- [ ] Actualizar el estado de la reserva y eliminarla
-- [ ] Casos de error: servicio o reserva inexistente (404), datos inválidos (400), servicio no disponible o reserva cancelada (409)
-- [ ] Vistas `/views/services`, `/views/availability` y `/views/bookings/:bid` actualizándose sin recargar
-
-## Criterios de evaluación y evidencia
-
-| Criterio | Dónde verlo |
-|----------|-------------|
-| **Arquitectura en capas** (20%) | `src/routes` → `src/controllers` → `src/services` → `src/repositories` → `src/dao` → `src/dao/models`, más `src/config`, `src/validations`, `src/middlewares`, `src/sockets` y `src/views`. Ver [Arquitectura](#arquitectura). Suite de tests *"Arquitectura en capas"* |
-| **Gestión de servicios** (20%) | `POST`, `GET`, `GET /:sid`, `PUT /:sid` y `DELETE /:sid` en `/api/services`, validados con Zod y persistidos en MongoDB. Suite *"Servicios: CRUD"* |
-| **Gestión de reservas** (15%) | Crear, listar, consultar, agregar servicios, modificar cantidades (`PUT /:bid/services/:sid`), quitar servicios (`DELETE /:bid/services/:sid`), vaciar (`DELETE /:bid/services`) y eliminar (`DELETE /:bid`). Suite *"Reservas"* |
-| **Persistencia, consultas y validación** (15%) | `GET /api/services` con `category`, `available`, `page`, `limit`, `sortBy` y `order` resueltos en MongoDB (`services.dao.js`). Esquemas de Zod en `src/validations/` aplicados como middlewares. Suite *"Servicios: filtros, paginación y ordenamiento"* |
-| **Relaciones y populate** (10%) | `booking.model.js`: `services: [{ service: ObjectId ref 'services', quantity }]`. `bookings.dao.js`: `populate('services.service')` en `GET /api/bookings/:bid` y en la vista de detalle |
-| **Vistas y WebSockets** (10%) | Vistas `/views`, `/views/services`, `/views/availability` y `/views/bookings/:bid`. Socket.io emite `servicesUpdated` / `bookingsUpdated` y las vistas se actualizan sin recargar. Suites *"Vistas con Handlebars"* y *"Tiempo real con Socket.io"* |
-| **Documentación y entrega** (10%) | Este README, `.env.example`, scripts `start` / `dev` / `seed` / `test` y `.gitignore` con `node_modules/` y `.env`. El repositorio no incluye `node_modules`, `.env` ni credenciales |
-
 ## Historial de entregas
 
 Cada pre-entrega quedó en su propia rama. `entrega-final` las unifica a todas:
